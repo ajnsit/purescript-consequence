@@ -1,10 +1,10 @@
 module Relation where
 
-import Prelude
-
+import Data.Function ((#))
 import Data.Maybe (Maybe(..))
+import Data.Ord ((>))
 import Data.Symbol (class IsSymbol, SProxy(..))
-import Prim.Row (class Nub)
+import Prim.Row (class Nub, class Lacks)
 import Type.Proxy (Proxy(..))
 import Type.Row (class Cons, class ListToRow, class Union, Nil, RProxy(..))
 
@@ -56,7 +56,7 @@ empty = relation
 
 -- | Select some columns from a relation
 -- TODO: Instead of RProxy, we should use List SProxy/Field.
-project :: forall r1 r r2. Union r1 r2 r => Nub r r => RProxy r2 -> Relation r -> Relation r2
+project :: forall r1 r r2. Union r1 r2 r => RProxy r1 -> Relation r -> Relation r1
 project _ _ = relation
 
 -- | Remove some columns from a relation
@@ -65,7 +65,17 @@ except :: forall r1 r r2. Union r1 r2 r => Nub r r => RProxy r1 -> Relation r ->
 except _ _ = relation
 
 -- | Rename a field in a relation
-renameField :: forall s1 s2 x r r1 r2. IsSymbol s1 => IsSymbol s2 => Cons s1 x r r1 => Cons s2 x r r2 => SProxy s1 -> SProxy s2 -> Relation r1 -> Relation r2
+renameField :: forall prev next ty input inter output
+   . IsSymbol prev
+  => IsSymbol next
+  => Cons prev ty inter input
+  => Lacks prev inter
+  => Cons next ty inter output
+  => Lacks next inter
+  => SProxy prev
+  -> SProxy next
+  -> Relation input
+  -> Relation output
 renameField _ _ _ = relation
 
 -- | Add a new field to a relation
@@ -88,13 +98,16 @@ limit _ r = r
 -- Joins -----------------------------------
 
 
-join :: forall a b x r1 r2 r. Union a x r1 => Nub r1 r1 => Union b x r2 => Nub r2 r2 => Union r1 b r => Union a r2 r => Nub r r => RProxy x -> Relation r1 -> Relation r2 -> Relation r
+join
+  :: forall join a relation1 b relation2 result
+   . Union join a relation1
+  => Union join b relation2
+  => Union a relation2 result
+  => RProxy join
+  -> Relation relation1
+  -> Relation relation2
+  -> Relation result
 join _ _ _ = relation
-
-join' :: forall a b x r1 r2 r r'. Union a x r1 => Nub r1 r1 => Union b x r2 => Nub r2 r2 => Union r1 b r => Union a r2 r => Union r1 r2 r' => Nub r' r => Nub r r => Relation r1 -> Relation r2 -> Relation r
-join' _ _ = relation
-
-
 
 -- Example -------------------------------------------
 nameField :: Field "name" String
@@ -114,9 +127,10 @@ employeeTable :: EmployeeRel
 employeeTable = relation
 
 -- Get all managers older than 60
--- oldManagers :: PersonRel
-oldManagers = employeeTable
-  # renameField (SProxy :: SProxy "managerName") (SProxy :: SProxy "name")
-  # join (RProxy :: RProxy (name :: String)) personTable
-  # filter (\r -> r.age > 60)
-  # project (RProxy :: RProxy (name :: String, age :: Int))
+oldManagers :: PersonRel
+oldManagers =
+    employeeTable
+      # renameField (SProxy :: SProxy "managerName") (SProxy :: SProxy "name")
+      # join (RProxy :: RProxy (name :: String)) personTable
+      # filter (\r -> r.age > 60)
+      # project (RProxy :: RProxy (name :: String, age :: Int))
