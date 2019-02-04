@@ -1,0 +1,22 @@
+{
+  "name": "purescript-consequence",
+  "version": "0.1.0",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ajnsit/purescript-consequence.git"
+  },
+  "dependencies": {
+    "purescript-record": "^1.0.0",
+    "purescript-arrays": "^5.2.0"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^4.0.0"
+  }
+}
