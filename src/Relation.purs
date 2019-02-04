@@ -3,7 +3,7 @@ module Relation where
 import Data.Function ((#))
 import Data.Maybe (Maybe(..))
 import Data.Ord ((>))
-import Data.Symbol (class IsSymbol, SProxy(..))
+import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Prim.Row (class Nub, class Lacks)
 import Type.Proxy (Proxy(..))
 import Type.Row (class Cons, class ListToRow, class Union, Nil, RProxy(..))
@@ -12,8 +12,8 @@ import Type.Row (class Cons, class ListToRow, class Union, Nil, RProxy(..))
 
 data Field (s :: Symbol) (t :: Type) = Field
 
-fieldName :: forall s t. Field s t -> SProxy s
-fieldName _ = SProxy
+fieldName :: forall s t. IsSymbol s => Field s t -> String
+fieldName _ = reflectSymbol (SProxy :: _ s)
 
 fieldType :: forall s t. Field s t -> Proxy t
 fieldType _ = Proxy
@@ -50,8 +50,7 @@ relation = Relation Nothing
 -- Also consider duplicate labels, but different types. Are those handled by Nub?
 
 -- | An empty relation
--- Do we have a predefined empty row? Going through RowList seems hacky.
-empty :: forall x. ListToRow Nil x => Relation x
+empty :: Relation ()
 empty = relation
 
 -- | Select some columns from a relation
@@ -109,6 +108,26 @@ join
   -> Relation result
 join _ _ _ = relation
 
+-- Aggregations --------------------------------------
+
+-- Aggregation
+data Aggregation (from :: #Type) (to :: #Type) = Aggregation
+
+aggCons :: forall f1 f2 f t1 t2 t. Union f1 f2 f => Union t1 t2 t => Aggregation f1 t1 -> Aggregation f2 t2 -> Aggregation f t
+aggCons _ _ = Aggregation
+
+-- TODO: Generalise to `Num a`
+-- TODO: How do I create a singleton row from a symbol?
+sumAgg :: forall sIn sOut tIn tOut. IsSymbol sIn => IsSymbol sOut => Cons sIn Int () tIn => Cons sOut Int () tOut => SProxy sIn -> SProxy sOut -> Aggregation tIn tOut
+sumAgg _ _ = Aggregation
+
+countAgg :: forall sOut tOut. IsSymbol sOut => Cons sOut Int () tOut => SProxy sOut -> Aggregation () tOut
+countAgg _ = Aggregation
+
+aggregate :: forall from input input' output. Union input from input' => Nub input' input => Aggregation from output -> Relation input -> Relation output
+aggregate _ _ = relation
+
+
 -- Example -------------------------------------------
 nameField :: Field "name" String
 nameField = field
@@ -134,3 +153,15 @@ oldManagers =
       # join (RProxy :: RProxy (name :: String)) personTable
       # filter (\r -> r.age > 60)
       # project (RProxy :: RProxy (name :: String, age :: Int))
+
+-- Number of old managers, and sum of their ages
+sumAgesOldManagers :: Relation (numOldManagers :: Int, sumAgesOldManagers :: Int)
+sumAgesOldManagers =
+  oldManagers
+    # aggregate (aggCons
+        (sumAgg (SProxy :: _"age") (SProxy :: _"sumAgesOldManagers"))
+        (countAgg (SProxy :: _"numOldManagers")))
+
+-- Type level lists
+-- data TypeNil
+-- data TypeCons car cdr
