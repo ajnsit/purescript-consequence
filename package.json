@@ -1,0 +1,27 @@
+{
+  "name": "purescript-consequence",
+  "version": "0.1.0",
+  "description": "A Purescript DSL for Analytics and Reporting",
+  "license": "MIT",
+  "repository": "ajnsit/purescript-consequence",
+  "author": {
+    "name": "Anupam Jain",
+    "email": "ajnsit@gmail.com"
+  },
+  "files": [],
+  "scripts": {
+    "ps": "bower install && pulp build",
+    "build": "node_modules/.bin/parcel build index.html",
+    "start": "node_modules/.bin/parcel index.html",
+    "watch": "node_modules/.bin/parcel watch index.html"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "bower": "^1.8.8",
+    "parcel-bundler": "^1.9.7",
+    "pulp": "^12.3.1",
+    "purescript": "^0.12.1",
+    "purescript-psa": "^0.7.3",
+    "rimraf": "^2.6.3"
+  }
+}
