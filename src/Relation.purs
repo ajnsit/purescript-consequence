@@ -6,7 +6,7 @@ import Data.Ord ((>))
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Prim.Row (class Nub, class Lacks)
 import Type.Proxy (Proxy(..))
-import Type.Row (class Cons, class ListToRow, class Union, Nil, RProxy(..))
+import Type.Row (class Cons, class Union, RProxy(..))
 
 -- Fields ----------------------
 
@@ -53,14 +53,29 @@ relation = Relation Nothing
 empty :: Relation ()
 empty = relation
 
+-- | Create a relation from an array of records
+fromRecords :: forall r
+  . Array (Record r)
+  -> Relation r
+fromRecords _ = relation
+
 -- | Select some columns from a relation
 -- TODO: Instead of RProxy, we should use List SProxy/Field.
-project :: forall r1 r r2. Union r1 r2 r => RProxy r1 -> Relation r -> Relation r1
+project :: forall r1 r r2
+  . Union r1 r2 r
+  => RProxy r1
+  -> Relation r
+  -> Relation r1
 project _ _ = relation
 
 -- | Remove some columns from a relation
 -- TODO: Instead of RProxy, we should use List SProxy/Field.
-except :: forall r1 r r2. Union r1 r2 r => Nub r r => RProxy r1 -> Relation r -> Relation r2
+except :: forall r1 r r2
+  . Union r1 r2 r
+  => Nub r r
+  => RProxy r1
+  -> Relation r
+  -> Relation r2
 except _ _ = relation
 
 -- | Rename a field in a relation
@@ -77,21 +92,38 @@ renameField :: forall prev next ty input inter output
   -> Relation output
 renameField _ _ _ = relation
 
--- | Add a new field to a relation
-addField :: forall s t r1 r2. IsSymbol s => Cons s t r1 r2 => Field s t -> Relation r1 -> Relation r2
-addField _ _ = relation
+-- | Add a new field to a relation. The initial values for the column are computed per record.
+addField :: forall s t r1 r2
+  . IsSymbol s
+  => Cons s t r1 r2
+  => SProxy s
+  -> (Record r1 -> t)
+  -> Relation r1
+  -> Relation r2
+addField _ _ _ = relation
 
 -- | Remove a single field from a relation
-removeField :: forall s t r1 r2. IsSymbol s => Cons s t r1 r2 => SProxy s -> Relation r2 -> Relation r1
+removeField :: forall s t r1 r2
+  . IsSymbol s
+  => Cons s t r1 r2
+  => SProxy s
+  -> Relation r2
+  -> Relation r1
 removeField _ _ = relation
 
 
 -- Row Ops ------------------------------------------
 
-filter :: forall r1. (Record r1 -> Boolean) -> Relation r1 -> Relation r1
+filter :: forall r1
+  . (Record r1 -> Boolean)
+  -> Relation r1
+  -> Relation r1
 filter _ r = r
 
-limit :: forall r. Int -> Relation r -> Relation r
+limit :: forall r
+  . Int
+  -> Relation r
+  -> Relation r
 limit _ r = r
 
 -- Joins -----------------------------------
@@ -113,20 +145,57 @@ join _ _ _ = relation
 -- Aggregation
 data Aggregation (from :: #Type) (to :: #Type) = Aggregation
 
-aggCons :: forall f1 f2 f t1 t2 t. Union f1 f2 f => Union t1 t2 t => Aggregation f1 t1 -> Aggregation f2 t2 -> Aggregation f t
+aggCons :: forall f1 f2 f t1 t2 t
+  . Union f1 f2 f
+  => Union t1 t2 t
+  => Aggregation f1 t1
+  -> Aggregation f2 t2
+  -> Aggregation f t
 aggCons _ _ = Aggregation
+
+infixr 8 aggCons as &&=
 
 -- TODO: Generalise to `Num a`
 -- TODO: How do I create a singleton row from a symbol?
-sumAgg :: forall sIn sOut tIn tOut. IsSymbol sIn => IsSymbol sOut => Cons sIn Int () tIn => Cons sOut Int () tOut => SProxy sIn -> SProxy sOut -> Aggregation tIn tOut
+sumAgg :: forall sIn sOut tIn tOut
+  . IsSymbol sIn
+  => IsSymbol sOut
+  => Cons sIn Int () tIn
+  => Cons sOut Int () tOut
+  => SProxy sIn
+  -> SProxy sOut
+  -> Aggregation tIn tOut
 sumAgg _ _ = Aggregation
 
-countAgg :: forall sOut tOut. IsSymbol sOut => Cons sOut Int () tOut => SProxy sOut -> Aggregation () tOut
+countAgg :: forall sOut tOut
+  . IsSymbol sOut
+  => Cons sOut Int () tOut
+  => SProxy sOut
+  -> Aggregation () tOut
 countAgg _ = Aggregation
 
-aggregate :: forall from input input' output. Union input from input' => Nub input' input => Aggregation from output -> Relation input -> Relation output
+aggregate :: forall from input input' output
+  . Union input from input'
+  => Nub input' input
+  => Aggregation from output
+  -> Relation input
+  -> Relation output
 aggregate _ _ = relation
 
+-- Group By ------------------------------------------
+
+-- TODO
+
+-- There are many different types of group by clauses
+--  Group by
+--  Group by Grouping sets
+--  Group by Cube
+--  Group by Rollup
+-- probably more?
+
+-- Vanilla group by is treated as an aggregation
+groupBy_ :: forall r . RProxy r -> Aggregation r r
+groupBy_ _ = Aggregation
 
 -- Example -------------------------------------------
 nameField :: Field "name" String
@@ -154,13 +223,32 @@ oldManagers =
       # filter (\r -> r.age > 60)
       # project (RProxy :: RProxy (name :: String, age :: Int))
 
--- Number of old managers, and sum of their ages
-sumAgesOldManagers :: Relation (numOldManagers :: Int, sumAgesOldManagers :: Int)
+-- Number of old managers, and sum of their ages, grouped by manager names (doesn't make much sense)
+sumAgesOldManagers :: Relation (numOldManagers :: Int, sumAgesOldManagers :: Int, name :: String)
 sumAgesOldManagers =
   oldManagers
-    # aggregate (aggCons
-        (sumAgg (SProxy :: _"age") (SProxy :: _"sumAgesOldManagers"))
-        (countAgg (SProxy :: _"numOldManagers")))
+    # aggregate
+        (sumAgg (SProxy :: _"age") (SProxy :: _"sumAgesOldManagers")
+        &&= countAgg (SProxy :: _"numOldManagers")
+        &&= groupBy_ (RProxy :: _(name :: String)))
+
+-- TODO: Get ages of all old managers with the specified names
+-- Needs us to convert a list to SQL (so that we can do name IN list)
+-- johnManagers :: Array String -> Relation (age :: Int)
+-- johnManagers names = foldr
+--   oldManagers
+--     # filter (\r -> r.name == "John")
+--     # except (RProxy :: _(name :: String))
+
+-- -- EXPR LANGUAGE
+-- data Expr a
+--   = Prim a
+--   |
+--
+-- -- SQL OPS
+-- -- Prims
+-- primLit :: forall a. ConcreteTyp  a -> Expr
+-- primLit
 
 -- Type level lists
 -- data TypeNil
