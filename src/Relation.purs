@@ -234,8 +234,8 @@ sumAgesOldManagers =
 
 -- TODO: Get ages of all old managers with the specified names
 -- Needs us to convert a list to SQL (so that we can do name IN list)
--- johnManagers :: Array String -> Relation (age :: Int)
--- johnManagers names = foldr
+-- nameOldManagersAge :: Array String -> Relation (age :: Int)
+-- nameOldManagersAge names = foldr
 --   oldManagers
 --     # filter (\r -> r.name == "John")
 --     # except (RProxy :: _(name :: String))

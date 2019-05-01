@@ -89,8 +89,15 @@ tarray = ttarray
 -- Existentially quantified
 data Typ = Typ (Exists TypQ)
 
--- A generalised Data.Dynamic
-data Dynamic t = Dynamic (forall a. Tuple (TypQ a) (t a))
+-- A Dynamically typed value with some concrete type
+data Dynamic' r t = Dynamic' (TypQ t) (r t)
+data Dynamic r = Dynamic (Exists (Dynamic' r))
+
+-- Why do we need to pass the type `t` and can't automatically deduce it from the term `r t`?
+-- Because `t` could be *any* Purescript type, even things not supported.
+-- Passing it as a `TypQ t` ensures that it is a supported type.
+mkDynamic :: forall r t. TypQ t -> r t -> Dynamic r
+mkDynamic t a = Dynamic (mkExists (Dynamic' t a))
 
 -- Constructors, also carry a type equality witness
 -- We don't need GADTs
@@ -108,31 +115,27 @@ newtype AsArray a = AsArray (Exists (AsArray' a))
 
 -- Convert a dynamic to a Unit if possible
 asUnit :: forall t. Dynamic t -> Maybe (t Unit)
-asUnit (Dynamic p) = case p of
-  Tuple (TypQ pp) c -> case pp of
-    AsUnit Nothing -> Nothing
-    AsUnit (Just tproof) -> Just (runLeibniz tproof c)
+asUnit (Dynamic p) = p # runExists \(Dynamic' (TypQ pp) c) -> case pp of
+  AsUnit Nothing -> Nothing
+  AsUnit (Just tproof) -> Just (runLeibniz tproof c)
 
 -- Convert a dynamic to an Int if possible
 asInt :: forall t. Dynamic t -> Maybe (t Int)
-asInt (Dynamic p) = case p of
-  Tuple (TypQ pp) c -> case pp of
-    AsInt Nothing -> Nothing
-    AsInt (Just tproof) -> Just (runLeibniz tproof c)
+asInt (Dynamic p) = p # runExists \(Dynamic' (TypQ pp) c) -> case pp of
+  AsInt Nothing -> Nothing
+  AsInt (Just tproof) -> Just (runLeibniz tproof c)
 
 -- Convert a dynamic to a Bool if possible
 asBool :: forall t. Dynamic t -> Maybe (t Boolean)
-asBool (Dynamic p) = case p of
-  Tuple (TypQ pp) c -> case pp of
-    AsBool Nothing -> Nothing
-    AsBool (Just tproof) -> Just (runLeibniz tproof c)
+asBool (Dynamic p) = p # runExists \(Dynamic' (TypQ pp) c) -> case pp of
+  AsBool Nothing -> Nothing
+  AsBool (Just tproof) -> Just (runLeibniz tproof c)
 
 -- Convert a dynamic to a Char if possible
 asChar :: forall t. Dynamic t -> Maybe (t Char)
-asChar (Dynamic p) = case p of
-  Tuple (TypQ pp) c -> case pp of
-    AsChar Nothing -> Nothing
-    AsChar (Just tproof) -> Just (runLeibniz tproof c)
+asChar (Dynamic p) = p # runExists \(Dynamic' (TypQ pp) c) -> case pp of
+  AsChar Nothing -> Nothing
+  AsChar (Just tproof) -> Just (runLeibniz tproof c)
 
 instance tSymAsUnit :: TSym AsUnit where
   ttunit = AsUnit $ Just identity
