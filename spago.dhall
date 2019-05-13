@@ -5,14 +5,15 @@ You can edit this file as you like.
 { name =
     "consequence"
 , dependencies =
-    [ "effect"
+    [ "arrays"
     , "console"
+    , "effect"
+    , "generics-rep"
+    , "integers"
+    , "leibniz"
     , "psci-support"
     , "record"
-    , "arrays"
-    , "generics-rep"
-    , "leibniz"
-    , "integers"
+    , "selda"
     ]
 , packages =
     ./packages.dhall

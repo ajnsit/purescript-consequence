@@ -116,6 +116,80 @@ let upstream =
 
 let overrides = {=}
 
-let additions = {=}
+let additions =
+  { selda =
+       mkPackage
+         [ "prelude"
+         , "console"
+         , "transformers"
+         , "heterogenous"
+         , "postgresql-client"
+         , "strings"
+         ]
+         "https://github.com/Kamirus/purescript-selda.git"
+         "master"
+  , heterogenous =
+       mkPackage
+         [ "prelude"
+         , "record"
+         , "tuples"
+         , "functors"
+         , "variant"
+         , "either"
+         ]
+         "https://github.com/natefaubion/purescript-heterogeneous.git"
+         "master"
+  , postgresql-client =
+       mkPackage
+         [ "prelude"
+         , "transformers"
+         , "lists"
+         , "foreign"
+         , "aff"
+         , "either"
+         , "maybe"
+         , "foldable-traversable"
+         , "newtype"
+         , "bytestrings"
+         , "arrays"
+         , "datetime"
+         , "bifunctors"
+         , "effect"
+         , "exceptions"
+         , "decimals"
+         , "js-date"
+         , "foreign-object"
+         , "foreign-generic"
+         , "tuples"
+         , "nullable"
+         ]
+         "https://github.com/rightfold/purescript-postgresql-client"
+         "master"
+  , bytestrings =
+       mkPackage
+         [ "node-buffer"
+         , "prelude"
+         , "effect"
+         , "quickcheck"
+         , "maybe"
+         , "arrays"
+         , "leibniz"
+         , "foldable-traversable"
+         , "unsafe-coerce"
+         , "newtype"
+         , "integers"
+         , "quotient"
+         , "exceptions"
+         ]
+         "https://github.com/rightfold/purescript-bytestrings.git"
+         "master"
+  , quotient =
+       mkPackage
+         [ "prelude"
+         , "quickcheck"
+         ]
+         "https://github.com/rightfold/purescript-quotient.git"
+         "master"
+  }
 
 in  upstream // overrides // additions
