@@ -32,7 +32,7 @@ class TSym p where
   -- Unit
   ttunit :: p Unit
   -- Functions
-  ttarr :: forall a b. p a -> p b -> p (a -> b)
+  ttfunc :: forall a b. p a -> p b -> p (a -> b)
   -- Tuples (Pairs)
   tttuple :: forall a b. p a -> p b -> p (Tuple a b)
   -- Arrays
@@ -51,7 +51,7 @@ instance supportedTypeChar :: SupportedType Char where
 instance supportedTypeUnit :: SupportedType Unit where
   typrep = ttunit
 instance supportedTypeFunc :: (SupportedType a, SupportedType b) => SupportedType (a->b) where
-  typrep = ttarr typrep typrep
+  typrep = ttfunc typrep typrep
 instance supportedTypeTuple :: (SupportedType a, SupportedType b) => SupportedType (Tuple a b) where
   typrep = tttuple typrep typrep
 instance supportedTypeArray :: SupportedType a => SupportedType (Array a) where
@@ -65,7 +65,7 @@ instance tSymTypQ :: TSym TypQ where
   ttint = TypQ ttint
   ttbool = TypQ ttbool
   ttchar = TypQ ttchar
-  ttarr (TypQ a) (TypQ b) = TypQ (ttarr a b)
+  ttfunc (TypQ a) (TypQ b) = TypQ (ttfunc a b)
   tttuple (TypQ a) (TypQ b) = TypQ (tttuple a b)
   ttarray (TypQ a) = TypQ (ttarray a)
 
@@ -78,9 +78,9 @@ tbool :: TypQ Boolean
 tbool = ttbool
 tchar :: TypQ Char
 tchar = ttchar
-tarr :: forall a b. TypQ a -> TypQ b -> TypQ (a->b)
-tarr = ttarr
-infixr 4 ttarr as ~~>
+tfunc :: forall a b. TypQ a -> TypQ b -> TypQ (a->b)
+tfunc = ttfunc
+infixr 4 ttfunc as ~~>
 ttuple :: forall a b. TypQ a -> TypQ b -> TypQ (Tuple a b)
 ttuple = tttuple
 tarray :: forall a. TypQ a -> TypQ (Array a)
@@ -142,7 +142,7 @@ instance tSymAsUnit :: TSym AsUnit where
   ttint = AsUnit Nothing
   ttbool = AsUnit Nothing
   ttchar = AsUnit Nothing
-  ttarr _ _ = AsUnit Nothing
+  ttfunc _ _ = AsUnit Nothing
   tttuple _ _ = AsUnit Nothing
   ttarray _ = AsUnit Nothing
 
@@ -151,7 +151,7 @@ instance tSymAsInt :: TSym AsInt where
   ttint = AsInt $ Just identity
   ttbool = AsInt Nothing
   ttchar = AsInt Nothing
-  ttarr _ _ = AsInt Nothing
+  ttfunc _ _ = AsInt Nothing
   tttuple _ _ = AsInt Nothing
   ttarray _ = AsInt Nothing
 
@@ -160,7 +160,7 @@ instance tSymAsBool :: TSym AsBool where
   ttint = AsBool Nothing
   ttbool = AsBool $ Just identity
   ttchar = AsBool Nothing
-  ttarr _ _ = AsBool Nothing
+  ttfunc _ _ = AsBool Nothing
   tttuple _ _ = AsBool Nothing
   ttarray _ = AsBool Nothing
 
@@ -169,7 +169,7 @@ instance tSymAsChar :: TSym AsChar where
   ttint = AsChar Nothing
   ttbool = AsChar Nothing
   ttchar = AsChar $ Just identity
-  ttarr _ _ = AsChar Nothing
+  ttfunc _ _ = AsChar Nothing
   tttuple _ _ = AsChar Nothing
   ttarray _ = AsChar Nothing
 
@@ -178,11 +178,11 @@ instance tSymAsArrow :: TSym AsArrow where
   ttint = AsArrow $ mkExists2 $ AsArrow' ttint Nothing
   ttbool = AsArrow $ mkExists2 $ AsArrow' ttbool Nothing
   ttchar = AsArrow $ mkExists2 $ AsArrow' ttchar Nothing
-  ttarr r1 r2 = case r1 of
+  ttfunc r1 r2 = case r1 of
     AsArrow p1 -> case r2 of
       AsArrow p2 -> p1 # runExists2 \(AsArrow' t1 _) ->
         p2 # runExists2 \(AsArrow' t2 _) ->
-          AsArrow $ mkExists2 $ AsArrow' (ttarr t1 t2) $ Just (tuple3 t1 t2 identity)
+          AsArrow $ mkExists2 $ AsArrow' (ttfunc t1 t2) $ Just (tuple3 t1 t2 identity)
   tttuple r1 r2 = case r1 of
     AsArrow p1 -> case r2 of
       AsArrow p2 -> p1 # runExists2 \(AsArrow' t1 _) ->
@@ -197,11 +197,11 @@ instance tSymAsTuple :: TSym AsTuple where
   ttint = AsTuple $ mkExists2 $ AsTuple' ttint Nothing
   ttbool = AsTuple $ mkExists2 $ AsTuple' ttbool Nothing
   ttchar = AsTuple $ mkExists2 $ AsTuple' ttchar Nothing
-  ttarr r1 r2 = case r1 of
+  ttfunc r1 r2 = case r1 of
     AsTuple p1 -> case r2 of
       AsTuple p2 -> p1 # runExists2 \(AsTuple' t1 _) ->
         p2 # runExists2 \(AsTuple' t2 _) ->
-          AsTuple $ mkExists2 $ AsTuple' (ttarr t1 t2) Nothing
+          AsTuple $ mkExists2 $ AsTuple' (ttfunc t1 t2) Nothing
   tttuple r1 r2 = case r1 of
     AsTuple p1 -> case r2 of
       AsTuple p2 -> p1 # runExists2 \(AsTuple' t1 _) ->
@@ -216,11 +216,11 @@ instance tSymAsArray :: TSym AsArray where
   ttint = AsArray $ mkExists $ AsArray' ttint Nothing
   ttbool = AsArray $ mkExists $ AsArray' ttbool Nothing
   ttchar = AsArray $ mkExists $ AsArray' ttchar Nothing
-  ttarr r1 r2 = case r1 of
+  ttfunc r1 r2 = case r1 of
     AsArray p1 -> case r2 of
       AsArray p2 -> p1 # runExists \(AsArray' t1 _) ->
         p2 # runExists \(AsArray' t2 _) ->
-          AsArray $ mkExists $ AsArray' (ttarr t1 t2) Nothing
+          AsArray $ mkExists $ AsArray' (ttfunc t1 t2) Nothing
   tttuple r1 r2 = case r1 of
     AsArray p1 -> case r2 of
       AsArray p2 -> p1 # runExists \(AsArray' t1 _) ->
@@ -240,7 +240,7 @@ instance tsymSafeCast :: TSym SafeCast where
   ttchar = SafeCast (\(TypQ p) -> case p of AsChar castf -> _runCast0 castf)
   ttarray (SafeCast t) =
     SafeCast (\(TypQ r) -> case r of AsArray p -> p # runExists \(AsArray' _ castf) -> _runCast1 castf t)
-  ttarr (SafeCast t1) (SafeCast t2) =
+  ttfunc (SafeCast t1) (SafeCast t2) =
     SafeCast (\(TypQ r) -> case r of AsArrow p -> p # runExists2 \(AsArrow' _ castf) -> _runCast2 castf t1 t2)
   tttuple (SafeCast t1) (SafeCast t2) =
     SafeCast (\(TypQ r) -> case r of AsTuple p -> p # runExists2 \(AsTuple' _ castf) -> _runCast2 castf t1 t2)
@@ -340,7 +340,7 @@ instance tSymShowT :: TSym ShowT where
   ttbool = ShowT "Bool"
   ttchar = ShowT "Char"
   ttint = ShowT "Int"
-  ttarr (ShowT a) (ShowT b) = ShowT $ "(" <> a <> " -> " <> b <> ")"
+  ttfunc (ShowT a) (ShowT b) = ShowT $ "(" <> a <> " -> " <> b <> ")"
   tttuple (ShowT a) (ShowT b) = ShowT $ "(" <> a <> ", " <> b <> ")"
   ttarray (ShowT a) = ShowT $ "[" <> a <> "]"
 
@@ -363,7 +363,7 @@ expToTyp (Node "TChar" [])  = pure $ Typ $ mkExists ttchar
 expToTyp (Node "TArr" [e1,e2]) = do
   Typ t1 <- expToTyp e1
   Typ t2 <- expToTyp e2
-  pure $ t1 # runExists \f1 -> t2 # runExists \f2 -> Typ (mkExists (ttarr f1 f2))
+  pure $ t1 # runExists \f1 -> t2 # runExists \f2 -> Typ (mkExists (ttfunc f1 f2))
 expToTyp (Node "TTuple" [e1,e2]) = do
   Typ t1 <- expToTyp e1
   Typ t2 <- expToTyp e2
@@ -378,6 +378,6 @@ instance tSymExpr :: TSym (Expr h) where
   ttint = Expr $ Node "TInt" []
   ttbool = Expr $ Node "TBool" []
   ttchar = Expr $ Node "TChar" []
-  ttarr a b = Expr $ Node "TArr" [serialise a, serialise b]
+  ttfunc a b = Expr $ Node "TArr" [serialise a, serialise b]
   tttuple a b = Expr $ Node "TTuple" [serialise a, serialise b]
   ttarray a = Expr $ Node "TArray" [serialise a]
