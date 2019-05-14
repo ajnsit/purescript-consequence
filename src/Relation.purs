@@ -218,10 +218,10 @@ employeeTable = relation
 oldManagers :: PersonRel
 oldManagers =
     employeeTable
-      # renameField (SProxy :: SProxy "managerName") (SProxy :: SProxy "name")
-      # join (RProxy :: RProxy (name :: String)) personTable
+      # renameField (SProxy :: _ "managerName") (SProxy :: _ "name")
+      # join (RProxy :: _ (name :: String)) personTable
       # filter (\r -> r.age > 60)
-      # project (RProxy :: RProxy (name :: String, age :: Int))
+      # project (RProxy :: _ (name :: String, age :: Int))
 
 -- Number of old managers, and sum of their ages, grouped by manager names (doesn't make much sense)
 sumAgesOldManagers :: Relation (numOldManagers :: Int, sumAgesOldManagers :: Int, name :: String)
