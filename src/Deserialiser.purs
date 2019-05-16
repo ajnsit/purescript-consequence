@@ -16,12 +16,18 @@ import Unsafe.Coerce (unsafeCoerce)
 
 -- The runtime environment (h) corresponding to the compile time environment (e)
 data RT e
-class Env e h | e -> h
+
+newtype UnwrapEnv r e h = UnwrapEnv (Env r e h => e -> Either String (Dynamic (r h)))
+
+class Env r e h | e -> h where
+  -- findvar :: String -> e -> Either String (Dynamic (r h))
+  mkvarz :: e -> Either String (Dynamic (r h))
+  mkvars :: (forall e' h'. UnwrapEnv r e' h') -> e -> Either String (Dynamic (r h))
 
 -- These are safe, thanks to the functional dependency
-fromRT :: forall e h. Env e h => RT e -> h
+fromRT :: forall r e h. Env r e h => RT e -> h
 fromRT = unsafeCoerce
-toRT :: forall e h. Env e h => h -> RT e
+toRT :: forall r e h. Env r e h => h -> RT e
 toRT = unsafeCoerce
 
 -- Typed deserialisation
